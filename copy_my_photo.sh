@@ -43,14 +43,7 @@ find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -exec s
 | while read -r duplicate_file; do
     # 删除重复文件
     echo "删除重复文件: $duplicate_file"
-    rm "$duplicate_file"
-done
-
-echo "重复图片已去除。"
-
-    # 删除重复文件
-    echo "删除重复文件: $duplicate_file"
-    rm "$duplicate_file"
+    rm "$destination_path/$duplicate_file"
 done
 
 echo "重复图片已去除。"
