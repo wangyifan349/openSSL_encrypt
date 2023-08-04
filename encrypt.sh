@@ -1,33 +1,38 @@
 #!/bin/bash
 
-# 询问加密路径
-read -p "输入被加密的路径: " source_folder
-#检查并赋予源文件夹读取权限
-if [[ ! -r "$source_folder" ]]; then
-    echo "Adding read permission to the source folder..."
-    chmod +r "$source_folder"
+# 询问加密文件夹位置
+read -p "输入加密文件夹的路径： " encrypted_folder
+
+# 检查并授予加密文件夹的读取权限
+if [[ ! -r "$encrypted_folder" ]]; then
+    echo "添加对加密文件夹的读取权限..."
+    chmod +r "$encrypted_folder"
 fi
 
-# Ask for the encryption password
-read -sp "输入加密密码： " encryption_password
+# 要求输入解密密码
+read -sp "输入解密的密码: " decryption_password
 echo
 
-# Create a temporary folder to store encrypted files
+# 创建一个临时文件夹来存储解密的文件
 temp_folder=$(mktemp -d)
 
-# Encrypt files using AES-256-CBC with PBKDF2 and overwrite the source files
-cd "$source_folder"
+# 使用 AES-256-CBC 和 PBKDF2 解密文件并覆盖加密文件
+cd "$encrypted_folder"
 for file in *; do
     if [[ ! -w "$file" ]]; then
-        echo "正在添加对 '$file' 的写入权限..."
+        echo "Adding write permission to '$file'..."
         chmod +w "$file"
     fi
 
-    openssl enc -aes-256-cbc -pbkdf2 -salt -in "$file" -out "$temp_folder/$file.aes" -k "$encryption_password"
-    mv "$temp_folder/$file.aes" "$file"
+    # 尝试解密文件，如果解密失败则输出错误信息并继续下一个文件
+    if openssl enc -d -aes-256-cbc -pbkdf2 -in "$file" -out "$temp_folder/$file" -k "$decryption_password"; then
+        mv "$temp_folder/$file" "$file"
+    else
+        echo "解密失败：'$file'"
+    fi
 done
 
 # 删除临时文件夹
 rm -r "$temp_folder"
 
-echo "加密完成。 所有文件中 '$source_folder' 已经被加密并覆盖"
+echo "解密完成。 所有文件位于 '$encrypted_folder' 已被解密并覆盖"
