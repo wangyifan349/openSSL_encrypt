@@ -62,3 +62,11 @@ openssl 简单的加密和解密文件
 缺陷
 
 1 缺少nonce或HMAC校验
+
+联系方式
+
+wangyifan349@gmail.com
+
+wangyifan1999@protonmail.com
+
+Telegram: https://t.me/wyf349
