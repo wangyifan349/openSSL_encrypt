@@ -44,7 +44,7 @@ openssl 简单的加密和解密文件
 
 注意事项
 
-使用本工具时，请确保你已经安装了OpenSSL和Bash。可以通过运行 openssl version 和 bash --version 来检查是否已安装。
+使用本工具时，请确保你已经安装了OpenSSL和Bash。可以通过运行 openssl version  来检查是否已安装。
 
 加密/解密密码应该足够强大并且不易被猜测。请确保密码不容易被他人获取。
 
