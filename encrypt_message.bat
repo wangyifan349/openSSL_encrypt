@@ -15,7 +15,7 @@ set /p input_string=
 if "%input_string%"=="exit" goto :eof
 
 echo %input_string%| openssl enc -d -aes-256-cbc -a -salt -pbkdf2 -pass pass:"jflsx.wijJfflscdIlSAqkfmc@jfeio1" 2> NUL
-REM pass冒号后面填写密码
+REM pass冒号后面填写密码,注意更换密码
 if %errorlevel% neq 0 (
     echo 无法解密，进行加密操作:
     echo %input_string%| openssl enc -aes-256-cbc -a -salt -pbkdf2 -pass pass:"jflsx.wijJfflscdIlSAqkfmc@jfeio1" | clip
