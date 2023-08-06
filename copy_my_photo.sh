@@ -51,8 +51,8 @@ find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -exec s
 | cut -c 135- \
 | while read -r duplicate_file; do
     # 删除重复文件
-    echo "删除重复文件: $duplicate_file"
-    rm "$duplicate_file"
+    echo "删除重复文件: $destination_path/$duplicate_file"
+    rm "$destination_path/$duplicate_file"# 绝对路径，我之前写的版本似乎使用相对路径会有问题。
 done
 
 echo "重复图片已去除。"
