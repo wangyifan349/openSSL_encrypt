@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# 帮助Linux用户，快速复制图片到指定位置，以实现进一步的加密和解密做准备。
-
 # 提示用户输入源路径和目标路径
 read -p "请输入源路径: " source_path
 read -p "请输入目标路径: " destination_path
@@ -28,8 +26,8 @@ find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) | while
     # 检查文件是否存在，如果存在，加上_2、_3等以防止名称冲突
     counter=1
     while [ -e "$destination_file_path" ]; do
-        base_name=$(basename "$file_name" | cut -d. -f1)
-        extension=$(basename "$file_name" | cut -d. -f2)
+        base_name="${file_name%.*}"
+        extension="${file_name##*.}"
         counter=$((counter+1))
         file_name="${base_name}_$counter.$extension"
         destination_file_path="$destination_path/$file_name"
@@ -48,11 +46,11 @@ cd "$destination_path" || exit 1
 find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -exec sha512sum {} + \
 | sort -k1,1 \
 | uniq -w 128 -d --all-repeated=separate \
-| cut -c 135- \
+| awk '{print substr($0, index($0,$2))}' \
 | while read -r duplicate_file; do
     # 删除重复文件
-    echo "删除重复文件: $destination_path/$duplicate_file"
-    rm "$destination_path/$duplicate_file"# 绝对路径，我之前写的版本似乎使用相对路径会有问题。
+    echo "删除重复文件: $duplicate_file"
+    rm "$duplicate_file"  # Use the relative path directly
 done
 
 echo "重复图片已去除。"
