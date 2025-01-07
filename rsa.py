@@ -1,11 +1,11 @@
+import secrets
+
 def gcd(a, b):
-    # 计算 a 和 b 的最大公约数
     while b != 0:
         a, b = b, a % b
     return a
 
 def mod_inverse(e, phi):
-    # 计算 e 关于 phi 的模逆
     d, x1, x2, y1 = 0, 0, 1, 1
     temp_phi = phi
     while e > 0:
@@ -16,38 +16,62 @@ def mod_inverse(e, phi):
     if temp_phi == 1:
         return d + phi
 
-def generate_keys(p, q, e):
-    # 生成公钥和私钥
+def is_prime(num):
+    if num <= 1:
+        return False
+    if num <= 3:
+        return True
+    if num % 2 == 0 or num % 3 == 0:
+        return False
+    i = 5
+    while i * i <= num:
+        if num % i == 0 or num % (i + 2) == 0:
+            return False
+        i += 6
+    return True
+
+def generate_large_prime(bits):
+    while True:
+        num = secrets.randbits(bits)
+        if is_prime(num):
+            return num
+
+def generate_keys(bits=2048):
+    print("Generating large prime numbers...")
+    p = generate_large_prime(bits // 2)
+    q = generate_large_prime(bits // 2)
+    print(f"Prime p: {p}")
+    print(f"Prime q: {q}")
+    
     n = p * q
     phi = (p - 1) * (q - 1)
-    
-    # 确保 e 和 phi 互质
-    while gcd(e, phi) != 1:
-        e += 1
-    
-    # 计算 d
+    e = 65537  # 常用的公钥指数
     d = mod_inverse(e, phi)
     
-    # 返回公钥和私钥
+    print(f"Modulus n: {n}")
+    print(f"Euler's Totient phi: {phi}")
+    print(f"Public exponent e: {e}")
+    print(f"Private exponent d: {d}")
+    
     return ((e, n), (d, n))
 
 def encrypt(public_key, plaintext):
-    # 使用公钥加密
     e, n = public_key
-    return pow(plaintext, e, n)
+    ciphertext = pow(plaintext, e, n)
+    print(f"Encrypting message {plaintext} to ciphertext {ciphertext}")
+    return ciphertext
 
 def decrypt(private_key, ciphertext):
-    # 使用私钥解密
     d, n = private_key
-    return pow(ciphertext, d, n)
+    decrypted_message = pow(ciphertext, d, n)
+    print(f"Decrypting ciphertext {ciphertext} to message {decrypted_message}")
+    return decrypted_message
 
-# 自定义参数
-p = 61  # 选择一个大素数
-q = 53  # 选择另一个大素数
-e = 17  # 选择一个小整数作为公钥指数
+# 参数设置
+key_size = 2048  # 密钥大小（位数）
 
 # 生成密钥对
-public_key, private_key = generate_keys(p, q, e)
+public_key, private_key = generate_keys(bits=key_size)
 
 # 示例消息
 message = 42
@@ -59,4 +83,6 @@ ciphertext = encrypt(public_key, message)
 decrypted_message = decrypt(private_key, ciphertext)
 
 # 输出结果
-print("Original:", message
+print("Original message:", message)
+print("Encrypted message:", ciphertext)
+print("Decrypted message:", decrypted_message)
