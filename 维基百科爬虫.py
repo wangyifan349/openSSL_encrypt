@@ -15,8 +15,8 @@ proxies = {
 def create_session():
     """创建并返回一个带有自定义User-Agent的requests.Session对象。"""
     session = requests.Session()
-    ua = UserAgent()  # 使用fake_useragent生成随机User-Agent
-    session.headers.update({'User-Agent': ua.google})  # 更新Session的头部信息
+    ua = UserAgent()
+    session.headers.update({'User-Agent': ua.google})
     return session
 
 def fetch_page(session, url):
@@ -59,11 +59,12 @@ def write_to_file(file, url, title, content):
     file.write(f"Content: {content}\n")
     file.write("="*80 + "\n")
 
-def save_state(visited, queue, state_file='crawler_state.json'):
+def save_state(visited, queue, output_file, state_file='crawler_state.json'):
     """保存爬虫的状态，包括已访问的URL和待访问的队列。"""
     state = {
         'visited': list(visited),
-        'queue': queue
+        'queue': queue,
+        'output_file': output_file  # 保存文件路径
     }
     with open(state_file, 'w', encoding='utf-8') as f:
         json.dump(state, f)
@@ -75,12 +76,21 @@ def load_state(state_file='crawler_state.json'):
             state = json.load(f)
             visited = set(state['visited'])
             queue = state['queue']
-            return visited, queue
-    return set(), []
+            output_file = state['output_file']
+            return visited, queue, output_file
+    return set(), [], 'wikipedia_content.txt'
 
-def crawl_wikipedia(start_url, max_depth=2, max_workers=5, output_file='wikipedia_content.txt', state_file='crawler_state.json'):
+def check_files(output_file):
+    """检查保存文件是否存在，如果不存在则创建。"""
+    if not os.path.exists(output_file):
+        with open(output_file, 'w', encoding='utf-8') as f:
+            pass  # 创建文件
+
+def crawl_wikipedia(start_url, max_depth=2, max_workers=5, state_file='crawler_state.json'):
     """主爬虫函数，负责管理爬虫的执行和状态保存。"""
-    visited, queue = load_state(state_file)
+    visited, queue, output_file = load_state(state_file)
+    check_files(output_file)
+
     if not queue:
         queue.append((start_url, 0))
 
@@ -114,7 +124,7 @@ def crawl_wikipedia(start_url, max_depth=2, max_workers=5, output_file='wikipedi
                     for future in futures:
                         url, depth = futures[future]
                         queue.append((url, depth))
-                    save_state(visited, queue, state_file)
+                    save_state(visited, queue, output_file, state_file)
 
 # 示例用法
 start_url = "https://en.wikipedia.org/wiki/Web_scraping"
