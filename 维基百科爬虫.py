@@ -15,35 +15,40 @@ proxies = {
 def create_session():
     """创建并返回一个带有自定义User-Agent的requests.Session对象。"""
     session = requests.Session()
-    ua = UserAgent()  # 使用fake_useragent生成随机User-Agent，以模拟不同浏览器的请求
-    session.headers.update({'User-Agent': ua.google})  # 设置User-Agent头部以避免被目标网站封锁
+    ua = UserAgent()  # 使用fake_useragent生成随机User-Agent
+    session.headers.update({'User-Agent': ua.google})  # 更新Session的头部信息
     return session
 
 def fetch_page(session, url):
     """使用给定的session获取页面内容。"""
     try:
-        response = session.get(url, proxies=proxies, timeout=10)  # 使用代理和超时机制来获取页面
-        if response.status_code == 200:  # 检查请求是否成功（状态码200表示成功）
+        response = session.get(url, proxies=proxies, timeout=10)
+        if response.status_code == 200:
             return response.content
     except requests.RequestException as e:
-        print(f"Request failed for {url}: {e}")  # 捕获并打印请求异常
+        print(f"Request failed for {url}: {e}")
     return None
 
 def parse_content(html_content):
     """解析HTML内容并提取标题、文本和链接。"""
-    soup = BeautifulSoup(html_content, 'html.parser')  # 使用BeautifulSoup解析HTML
-    title = soup.find('h1', {'id': 'firstHeading'}).text  # 提取页面标题
+    soup = BeautifulSoup(html_content, 'html.parser')
+    title_tag = soup.find('h1', {'id': 'firstHeading'})
+    title = title_tag.text if title_tag else "No Title"
 
-    content_div = soup.find('div', {'class': 'mw-parser-output'})  # 找到主要内容的div
-    paragraphs = content_div.find_all('p')  # 提取所有段落
-    text_content = '\n'.join([para.text for para in paragraphs])  # 合并段落文本
+    content_div = soup.find('div', {'class': 'mw-parser-output'})
+    paragraphs = content_div.find_all('p') if content_div else []
+    
+    text_content = ""
+    for para in paragraphs:
+        text_content += para.text + "\n"
 
     links = set()
-    for a_tag in content_div.find_all('a', href=True):  # 查找所有链接
-        href = a_tag['href']
-        if re.match(r'^/wiki/[^:]*$', href):  # 过滤掉非维基百科的内部链接（如文件、分类等）
-            full_url = 'https://en.wikipedia.org' + href  # 构造完整的URL
-            links.add(full_url)
+    if content_div:
+        for a_tag in content_div.find_all('a', href=True):
+            href = a_tag['href']
+            if re.match(r'^/wiki/[^:]*$', href):
+                full_url = 'https://en.wikipedia.org' + href
+                links.add(full_url)
 
     return title, text_content, links
 
@@ -52,55 +57,63 @@ def write_to_file(file, url, title, content):
     file.write(f"URL: {url}\n")
     file.write(f"Title: {title}\n")
     file.write(f"Content: {content}\n")
-    file.write("="*80 + "\n")  # 分隔符用于区分不同页面的内容
+    file.write("="*80 + "\n")
 
 def save_state(visited, queue, state_file='crawler_state.json'):
     """保存爬虫的状态，包括已访问的URL和待访问的队列。"""
     state = {
-        'visited': list(visited),  # 将集合转换为列表以便序列化
+        'visited': list(visited),
         'queue': queue
     }
     with open(state_file, 'w', encoding='utf-8') as f:
-        json.dump(state, f)  # 使用JSON格式保存状态
+        json.dump(state, f)
 
 def load_state(state_file='crawler_state.json'):
     """加载爬虫的状态，如果存在的话。"""
-    if os.path.exists(state_file):  # 检查状态文件是否存在
+    if os.path.exists(state_file):
         with open(state_file, 'r', encoding='utf-8') as f:
-            state = json.load(f)  # 从JSON文件中加载状态
-            return set(state['visited']), state['queue']
+            state = json.load(f)
+            visited = set(state['visited'])
+            queue = state['queue']
+            return visited, queue
     return set(), []
 
 def crawl_wikipedia(start_url, max_depth=2, max_workers=5, output_file='wikipedia_content.txt', state_file='crawler_state.json'):
     """主爬虫函数，负责管理爬虫的执行和状态保存。"""
-    visited, queue = load_state(state_file)  # 加载之前的爬虫状态
+    visited, queue = load_state(state_file)
     if not queue:
-        queue.append((start_url, 0))  # 如果队列为空，添加起始URL
+        queue.append((start_url, 0))
 
     with create_session() as session:
         with open(output_file, 'a', encoding='utf-8') as file:
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # 提交初始任务到线程池
-                futures = {executor.submit(fetch_page, session, url): (url, depth) for url, depth in queue}
+                futures = {}
+                for url, depth in queue:
+                    future = executor.submit(fetch_page, session, url)
+                    futures[future] = (url, depth)
 
                 while futures:
-                    for future in as_completed(futures):  # 处理已完成的任务
+                    for future in as_completed(futures):
                         url, depth = futures[future]
                         del futures[future]
 
-                        if url not in visited and depth <= max_depth:  # 检查深度限制和访问状态
-                            visited.add(url)  # 将URL标记为已访问
+                        if url not in visited and depth <= max_depth:
+                            visited.add(url)
                             html_content = future.result()
                             if html_content:
                                 title, content, links = parse_content(html_content)
                                 write_to_file(file, url, title, content)
 
                                 for link in links:
-                                    if link not in visited:  # 避免重复访问
-                                        futures[executor.submit(fetch_page, session, link)] = (link, depth + 1)
+                                    if link not in visited:
+                                        new_future = executor.submit(fetch_page, session, link)
+                                        futures[new_future] = (link, depth + 1)
 
                     # 定期保存状态
-                    queue = [(url, depth) for future in futures for url, depth in [futures[future]]]
+                    queue = []
+                    for future in futures:
+                        url, depth = futures[future]
+                        queue.append((url, depth))
                     save_state(visited, queue, state_file)
 
 # 示例用法
