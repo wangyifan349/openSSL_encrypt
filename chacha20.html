@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChaCha20-Poly1305 Encryption with Base58</title>
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 TweetNaCl 和工具库 -->
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl-util@0.15.1/nacl-util.min.js"></script>
+    <!-- 引入 Base58 编码库 -->
+    <script src="https://cdn.jsdelivr.net/npm/bs58@4.0.1/dist/bs58.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">ChaCha20-Poly1305 Encryption with Base58</h1>
+        <div class="form-group">
+            <label for="key">Key (32 bytes, base58):</label>
+            <input type="text" class="form-control" id="key" placeholder="Enter base58 encoded key">
+        </div>
+        <div class="form-group">
+            <label for="nonce">Nonce (12 bytes, base58):</label>
+            <input type="text" class="form-control" id="nonce" placeholder="Enter base58 encoded nonce">
+        </div>
+        <div class="form-group">
+            <label for="plaintext">Plaintext:</label>
+            <textarea class="form-control" id="plaintext" rows="4" placeholder="Enter plaintext"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="associatedData">Associated Data:</label>
+            <textarea class="form-control" id="associatedData" rows="2" placeholder="Enter associated data"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="encrypt()">Encrypt</button>
+        <button class="btn btn-secondary" onclick="decrypt()">Decrypt</button>
+        <h2 class="mt-4">Output</h2>
+        <div class="form-group">
+            <label for="ciphertext">Ciphertext (base58):</label>
+            <textarea class="form-control" id="ciphertext" rows="4" readonly></textarea>
+        </div>
+        <div class="form-group">
+            <label for="tag">Tag (base58):</label>
+            <textarea class="form-control" id="tag" rows="2" readonly></textarea>
+        </div>
+        <div class="form-group">
+            <label for="decryptedText">Decrypted Text:</label>
+            <textarea class="form-control" id="decryptedText" rows="4" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        // ------------------ 加密函数 ------------------
+        function encrypt() {
+            const key = bs58.decode(document.getElementById('key').value);
+            const nonce = bs58.decode(document.getElementById('nonce').value);
+            const plaintext = nacl.util.decodeUTF8(document.getElementById('plaintext').value);
+            const associatedData = nacl.util.decodeUTF8(document.getElementById('associatedData').value);
+
+            const box = nacl.secretbox(plaintext, nonce, key);
+            const tag = box.slice(-16);
+            const ciphertext = box.slice(0, -16);
+
+            document.getElementById('ciphertext').value = bs58.encode(ciphertext);
+            document.getElementById('tag').value = bs58.encode(tag);
+        }
+
+        // ------------------ 解密函数 ------------------
+        function decrypt() {
+            const key = bs58.decode(document.getElementById('key').value);
+            const nonce = bs58.decode(document.getElementById('nonce').value);
+            const ciphertext = bs58.decode(document.getElementById('ciphertext').value);
+            const tag = bs58.decode(document.getElementById('tag').value);
+            const associatedData = nacl.util.decodeUTF8(document.getElementById('associatedData').value);
+
+            const box = new Uint8Array(ciphertext.length + tag.length);
+            box.set(ciphertext);
+            box.set(tag, ciphertext.length);
+
+            const decrypted = nacl.secretbox.open(box, nonce, key);
+
+            if (decrypted) {
+                document.getElementById('decryptedText').value = nacl.util.encodeUTF8(decrypted);
+            } else {
+                document.getElementById('decryptedText').value = 'Decryption failed!';
+            }
+        }
+    </script>
+</body>
+</html>
